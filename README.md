@@ -4,5 +4,5 @@ All variables about trading strategy should be holding in Strategy module, and m
 
 It is originally designed as running both modules in a single thread but spawn methods require static lifetime and a Rc<RefCell<Strategy>> module cannot be moved to both modules simultaneously.
 
-To meet the lifetime requirement, the two modules are joined at main thread. However under multi-threads asynchronous structure, threads may conflict when reaching for mut_borrow of RefCell<Strategy>, 
-so RefCell is abandoned and a async mutex is used to lock the Strategy module and await until unlock whenever conflicting.
+To meet the lifetime requirement, the two modules are joined at main thread. However under multi-threads asynchronous structure, threads may conflict when reaching for mutable borrow of RefCell<Strategy>, 
+so RefCell is abandoned and a async mutex is used to lock the Strategy module and await until unlock whenever conflict arising.
