@@ -22,7 +22,7 @@ pub struct LimitOrder {
 #[derive(Serialize, Debug)]
 pub struct AmendOrder {
     pub symbol: String,
-    pub orderId: String,
+    pub orderId: i64,
     pub side: String,
     pub quantity: f32,
     pub price: f32
@@ -31,7 +31,7 @@ pub struct AmendOrder {
 // struct for amend order
 #[derive(Serialize, Debug)]
 pub struct CancelOrder {
-    pub orderId: String,
+    pub orderId: i64,
     pub symbol: String
 }
 
@@ -43,7 +43,7 @@ pub struct CancelAllOrder {
 
 // struct for order response from create order
 #[derive(Deserialize, Serialize, Debug)]
-pub struct OrderCreateResponse {
+pub struct OrderCreateRsp {
     pub executedQty: String, 
     pub orderId: i64,
     pub avgPrice: String, 
@@ -55,7 +55,7 @@ pub struct OrderCreateResponse {
 
 // struct for order response from amend order
 #[derive(Deserialize, Serialize, Debug)]
-pub struct OrderAmendResponse {
+pub struct OrderAmendRsp {
     pub orderId: i64,
     pub price: String,
     pub avgPrice: String, 
@@ -67,13 +67,13 @@ pub struct OrderAmendResponse {
 
 // struct for order response from cancel order
 #[derive(Deserialize, Serialize, Debug)]
-pub struct OrderCancelResponse {
+pub struct OrderCancelRsp {
     pub orderId: i64
 }
 
 // struct for order response from cancel all order
 #[derive(Deserialize, Serialize, Debug)]
-pub struct OrderCancelAllResponse {
+pub struct OrderCancelAllRsp {
     pub code: i64
 }
 
@@ -105,6 +105,23 @@ pub struct BookTickerRtn {
     pub T: i64,             // Trade time
 }
 
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct OrderUpdateRtn {
+    pub s: String,      // Symbol
+    pub S: String,      // Side
+    pub q: String,      // Original Quantity
+    pub p: String,      // Original Price
+    pub x: String,      // Execution Type
+    pub X: String,      // Order Status
+    pub i: i64,         // Order Id
+    pub l: String,      // Order Last Filled Quantity
+    pub T: i64,         // Order Trade Time
+    pub t: i64,         // Trade Id
+    pub ps: String,     // Position Side
+    pub rp: String,     // Realized Profit of the trade
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AggTradeRtnWrap {
     pub stream: String,            // stream name
@@ -116,3 +133,39 @@ pub struct BookTickerRtnWrap {
     pub stream: String,            // stream name
     pub data: BookTickerRtn,         // data stream
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct OrderUpdateRtnWrap {
+    pub e: String,          // Event Type
+    pub E: i64,             // Event Time
+    pub T: i64,             // Transaction Time
+    pub o: OrderUpdateRtn
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RateLimits {
+    pub interval: String,
+    pub intervalNum: i32,
+    pub limit: i32,
+    pub rateLimitType: String 
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TradeParam {
+    pub filterType: String,
+    pub stepSize: Option<String>, 
+    pub tickSize: Option<String>
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExchangeSymbols {
+    pub symbol: String,
+    pub filters: Vec<TradeParam>
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExchangeInfoRsp {
+    pub rateLimits: Vec<RateLimits>,
+    pub symbols: Vec<ExchangeSymbols>
+}
+
