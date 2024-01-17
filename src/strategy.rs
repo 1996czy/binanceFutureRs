@@ -1,5 +1,4 @@
 use tokio;
-use async_scoped::TokioScope;
 use std::collections::HashMap;
 use crate::rest::Rest;
 use crate::structure::*;
