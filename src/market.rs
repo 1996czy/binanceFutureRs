@@ -5,10 +5,10 @@ use tokio::net::TcpStream;
 use serde_json::from_str;
 use futures::stream::StreamExt;
 use webpki_roots::TLS_SERVER_ROOTS;
-use rustls::{RootCertStore, ClientConfig};
-use tokio_tungstenite::{WebSocketStream, MaybeTlsStream, connect_async_tls_with_config, Connector, KeyLogFile};
+use rustls::{RootCertStore, ClientConfig, KeyLogFile};
+use tokio_tungstenite::{WebSocketStream, MaybeTlsStream, connect_async_tls_with_config, Connector};
 
-use crate::strategy2::Strategy;
+use crate::strategy::Strategy;
 use crate::structure::*;
 
 
