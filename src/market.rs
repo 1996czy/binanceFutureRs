@@ -1,69 +1,81 @@
-use tokio;
-use serde_json::{from_str, Value};
-use futures::stream::StreamExt;
-use tokio::net::TcpStream;
-use tokio_tungstenite::{WebSocketStream, MaybeTlsStream, connect_async};
 use std::rc::Rc;
-use crate::strategy::Strategy;
-use crate::structure::*;
+use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::net::TcpStream;
+use serde_json::from_str;
+use futures::stream::StreamExt;
+use webpki_roots::TLS_SERVER_ROOTS;
+use rustls::{RootCertStore, ClientConfig};
+use tokio_tungstenite::{WebSocketStream, MaybeTlsStream, connect_async_tls_with_config, Connector, KeyLogFile};
+
+use crate::strategy2::Strategy;
+use crate::structure::*;
 
 
-#[derive(Clone)]
-pub struct Market<'a>
-{
-    pub streams: &'a str,
-    pub base_ws: &'a str,
-    pub stg: Rc<Mutex<Strategy<'a>>>,
+
+pub struct Market {
 }
 
-impl<'a: 'static> Market<'a>
-{
-    pub fn new(streams: &'a str, stg: Rc<Mutex<Strategy<'a>>>) -> Self
-    {
+
+impl Market {
+    pub fn new() -> Self {
         Market {
-            base_ws: "wss://fstream.binance.com/stream",
-            streams: streams,
-            stg: stg
         }
     }
 
-    pub async fn start(&mut self)
-    {
+    pub async fn start(&mut self, stg: Rc<Mutex<Strategy>>) {
         // connect market streams and join the callback
-        let client = self.ws_connect().await;
-        let task = self.ws_callback(client);
-        tokio::join!(task);
-        // tokio::task::LocalSet::new().spawn_local(async move { task.await });
+        let client = Self::ws_connect("btcusdt@aggTrade/ethusdt@aggTrade").await;
+        let rsp = Self::ws_callback(client, stg).await;
     }
 
-    pub async fn ws_connect(&self) -> WebSocketStream<MaybeTlsStream<TcpStream>>
-    {
+    async fn ws_connect(streams: &str) -> WebSocketStream<MaybeTlsStream<TcpStream>> {
+        let base_ws = "wss://fstream.binance.com/stream";
+
+
+        let mut root_cert_store = RootCertStore::empty();
+        root_cert_store.extend(
+            TLS_SERVER_ROOTS.iter().cloned()
+        );
+
+        let mut config = ClientConfig::builder()
+            .with_root_certificates(root_cert_store)
+            .with_no_client_auth();
+        config.key_log = Arc::new(KeyLogFile::new());
+        let connector = Connector::Rustls(Arc::new(config));
+
         // make ws connection to market stream, return handshaked stream
-        let url: String = self.base_ws.to_string() + &format!("?streams={}", self.streams).to_string();
-        let client = connect_async(url)
+        let url: String = base_ws.to_string() + &format!("?streams={}", streams).to_string();
+        connect_async_tls_with_config(url, None, false, Some(connector))
         .await
-        .unwrap();
-
-        client.0
+        .unwrap()
+        .0
     }
 
-    pub async fn ws_callback(&mut self, mut client: WebSocketStream<MaybeTlsStream<TcpStream>>)
-    {
+    async fn ws_callback(mut client: WebSocketStream<MaybeTlsStream<TcpStream>>, stg: Rc<Mutex<Strategy>>) {
         // receive data from stream and handle it
         while let Some(msg) = client.next().await {
-            let data = &(msg
+            let text_msg = &(msg
                 .unwrap()
                 .into_text()
                 .unwrap());
             
             // handle stream by content
-            // to avoid borrow error, try and sleep and wait until the borrow is end
-            if data.contains("aggTrade") {
-                self.stg.lock().await.trade_callback(from_str::<AggTradeRtnWrap>(data).unwrap().data).await;
+            if text_msg.contains("aggTrade") {
+                stg
+                .lock()
+                .await
+                .trade_callback(
+                    from_str::<AggTradeRtnWrap>(text_msg).unwrap().data
+                ).await;
             }
-            else if data.contains("bookTicker") {
-                self.stg.lock().await.bookTicker_callback(from_str::<BookTickerRtnWrap>(data).unwrap().data).await;
+            else if text_msg.contains("bookTicker") {
+                stg
+                .lock()
+                .await
+                .bookTicker_callback(
+                    from_str::<BookTickerRtnWrap>(text_msg).unwrap().data
+                ).await;
             }
         }
     }
